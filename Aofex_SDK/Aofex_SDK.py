@@ -5,6 +5,7 @@ import hashlib
 import json
 import random
 import string
+import sys
 import time
 
 import aiohttp
@@ -267,7 +268,7 @@ class AofexApi:
         :param symbol : 依据交易对
         :return:
         '''
-        symbols_result = await asyncio.create_task(self.symbols())
+        symbols_result = await (asyncio.create_task if sys.version >= '3.7' else asyncio.ensure_future)(self.symbols())
         if symbols_result['errno'] == 0:
             A_symbols = [A_symbol['symbol'] for A_symbol in symbols_result['result']]
             # 货币对Graph
@@ -304,7 +305,8 @@ class AofexApi:
                     return route[::-1]
 
     async def newest_price(self, symbol: str):
-        depth_task = asyncio.create_task(self.kline(symbol, '1mon', 1))
+        depth_task = (asyncio.create_task if sys.version >= '3.7' else asyncio.ensure_future)(
+            self.kline(symbol, '1mon', 1))
         if (await depth_task)['errno'] == 0:
             return float((await depth_task)['result']['data'][0]['close'])
         else:
@@ -316,7 +318,8 @@ class AofexApi:
                 pass
             else:
                 if bool(price_route):
-                    price_tasks = [asyncio.create_task(self.newest_price(route_symbol)) for route_symbol in price_route]
+                    price_tasks = [(asyncio.create_task if sys.version >= '3.7' else asyncio.ensure_future)(
+                        self.newest_price(route_symbol)) for route_symbol in price_route]
                     for i in range(len(price_route)):
                         price *= (await price_tasks[i]) ** (1 if f'{expected_base}-' in price_route[i] else -1)
                         expected_base = price_route[i].split('-')[1]
