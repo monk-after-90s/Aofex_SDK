@@ -303,20 +303,24 @@ class AofexApi:
                         current_vert = current_vert.previous
                     return route[::-1]
 
-    async def last_price(self, symbol: str):
+    async def newest_price(self, symbol: str):
         depth_task = asyncio.create_task(self.kline(symbol, '1mon', 1))
         if (await depth_task)['errno'] == 0:
             return float((await depth_task)['result']['data'][0]['close'])
         else:
             price = 1
             expected_base = symbol.split('-')[0]
-            price_route = await self._calculate_symbol_route(symbol)
-            if bool(price_route):
-                price_tasks = [asyncio.create_task(self.last_price(route_symbol)) for route_symbol in price_route]
-                for i in range(len(price_route)):
-                    price *= (await price_tasks[i]) ** (1 if f'{expected_base}-' in price_route[i] else -1)
-                    expected_base = price_route[i].split('-')[1]
-                return price
+            try:
+                price_route = await self._calculate_symbol_route(symbol)
+            except:
+                pass
+            else:
+                if bool(price_route):
+                    price_tasks = [asyncio.create_task(self.newest_price(route_symbol)) for route_symbol in price_route]
+                    for i in range(len(price_route)):
+                        price *= (await price_tasks[i]) ** (1 if f'{expected_base}-' in price_route[i] else -1)
+                        expected_base = price_route[i].split('-')[1]
+                    return price
 
     async def kline_contract(self, symbol, period, size=None):
         """
@@ -1015,7 +1019,7 @@ class AofexApi:
 if __name__ == '__main__':
     async def test():
         ao = AofexApi()
-        price = await ao.last_price('TVC-RLY')
+        price = await ao.newest_price('TVC-RLY')
         print(price)
         await ao.Exit()
 
