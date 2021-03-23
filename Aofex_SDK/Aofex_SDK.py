@@ -308,7 +308,10 @@ class AofexApi:
         depth_task = (asyncio.create_task if sys.version >= '3.7' else asyncio.ensure_future)(
             self.kline(symbol, '1mon', 1))
         if (await depth_task)['errno'] == 0:
-            return float((await depth_task)['result']['data'][0]['close'])
+            try:
+                return float((await depth_task)['result']['data'][0]['close'])
+            except:
+                pass
         else:
             price = 1
             expected_base = symbol.split('-')[0]
